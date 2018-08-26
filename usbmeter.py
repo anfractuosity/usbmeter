@@ -42,10 +42,12 @@ print("connecting to \"%s\" on %s" % (name, host))
 sock=BluetoothSocket( RFCOMM )
 res = sock.connect((host, port))
 
-volts = collections.deque(maxlen=10)
-currents = collections.deque(maxlen=10)
-watts = collections.deque(maxlen=10)
-times = collections.deque(maxlen=10)
+leng = 20
+
+volts = collections.deque(maxlen=leng)
+currents = collections.deque(maxlen=leng)
+watts = collections.deque(maxlen=leng)
+times = collections.deque(maxlen=leng)
 
 if args.graph is not None:
     import numpy as np
