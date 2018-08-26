@@ -10,6 +10,8 @@ import argparse
 
 parser = argparse.ArgumentParser(description="CLI for USB Meter")
 parser.add_argument("--addr", dest="addr",type=str,help="Address of USB Meter")
+parser.add_argument("--graph", dest="graph",help="Live graphing",action='store_true')
+
 args = parser.parse_args()
 
 addr = None
@@ -36,6 +38,17 @@ print("connecting to \"%s\" on %s" % (name, host))
 sock=BluetoothSocket( RFCOMM )
 res = sock.connect((host, port))
 
+volts = []
+
+if args.graph is not None:
+    
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import matplotlib.animation as animation
+
+    plt.show(block=False)
+    plt.ylim(0,8)
+
 sock.send((0xF0).to_bytes(1,byteorder='big'))
 
 d = b""
@@ -49,6 +62,8 @@ while True:
     data = {}
 
     data['Volts'] = struct.unpack(">h",d[2:3+1])[0]/1000.0  # volts
+    volts.append(data['Volts'])
+
     data['Amps'] = struct.unpack(">h",d[4:5+1])[0]/1000.0   # amps
     data['Watts'] = struct.unpack(">I",d[6:9+1])[0]/1000.0  # watts
     data['temp_C'] = struct.unpack(">h",d[10:11+1])[0]      # temp in C
@@ -66,10 +81,16 @@ while True:
     data['data_line_neg_volt'] = struct.unpack(">h",d[98:99+1])[0]/100.0 # data line neg voltage
     data['resistance'] = struct.unpack(">I",d[122:125+1])[0]/10.0        # resistance
     
+    if args.graph is not None:
+        plt.plot(range(len(volts)), volts)
+        plt.draw()
+        plt.pause(0.001)
+
     print(data)
 
     d=b""
     sock.send((0xF0).to_bytes(1,byteorder='big'))
+
 
     time.sleep(0.01)
     
