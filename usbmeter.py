@@ -3,10 +3,14 @@
 # sudo systemctl start bluetooth
 # echo "power on" | bluetoothctl
 
+import collections
 from bluetooth import *
 import sys
-import time
 import argparse
+import datetime
+from matplotlib.dates import DayLocator, HourLocator, DateFormatter, drange
+import matplotlib
+import time
 
 parser = argparse.ArgumentParser(description="CLI for USB Meter")
 parser.add_argument("--addr", dest="addr",type=str,help="Address of USB Meter")
@@ -38,16 +42,17 @@ print("connecting to \"%s\" on %s" % (name, host))
 sock=BluetoothSocket( RFCOMM )
 res = sock.connect((host, port))
 
-volts = []
+volts = collections.deque(maxlen=10)
+currents = collections.deque(maxlen=10)
+watts = collections.deque(maxlen=10)
+times = collections.deque(maxlen=10)
 
 if args.graph is not None:
-    
     import numpy as np
     import matplotlib.pyplot as plt
     import matplotlib.animation as animation
-
+    f, (ax1, ax2, ax3) = plt.subplots(3,sharex=True)
     plt.show(block=False)
-    plt.ylim(0,8)
 
 sock.send((0xF0).to_bytes(1,byteorder='big'))
 
@@ -62,12 +67,18 @@ while True:
     data = {}
 
     data['Volts'] = struct.unpack(">h",d[2:3+1])[0]/1000.0  # volts
-    volts.append(data['Volts'])
-
     data['Amps'] = struct.unpack(">h",d[4:5+1])[0]/1000.0   # amps
     data['Watts'] = struct.unpack(">I",d[6:9+1])[0]/1000.0  # watts
     data['temp_C'] = struct.unpack(">h",d[10:11+1])[0]      # temp in C
     data['temp_F'] = struct.unpack(">h",d[12:13+1])[0]      # temp in F
+
+    volts.append(data['Volts'])
+    currents.append(data['Amps'])
+    watts.append(data['Watts'])
+
+    utc_dt = datetime.datetime.now(datetime.timezone.utc) # UTC time
+    dt = utc_dt.astimezone() # local time
+    times.append(dt)
 
     g = 0
     for i in range(16,95,8):
@@ -81,9 +92,24 @@ while True:
     data['data_line_neg_volt'] = struct.unpack(">h",d[98:99+1])[0]/100.0 # data line neg voltage
     data['resistance'] = struct.unpack(">I",d[122:125+1])[0]/10.0        # resistance
     
-    if args.graph is not None:
-        plt.plot(range(len(volts)), volts)
-        plt.draw()
+    if args.graph is not None and plt.get_fignums():
+        ax1.clear()
+        ax1.plot(times, volts)
+        ax2.clear()
+        ax2.plot(times, currents)
+        ax3.clear()
+        ax3.plot(times, watts)
+
+        ax1.title.set_text("Voltage")
+        ax1.xaxis.set_major_formatter(DateFormatter('%H:%M:%S'))
+        ax1.fmt_xdata = DateFormatter('%H:%M:%S')
+        f.autofmt_xdate()
+
+        ax2.title.set_text("Current")
+        ax3.title.set_text("Wattage")
+
+        f.canvas.draw()
+        f.canvas.flush_events()
         plt.pause(0.001)
 
     print(data)
