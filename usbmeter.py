@@ -48,15 +48,15 @@ while True:
 
     data = {}
 
-    data['Volts'] = struct.unpack(">h",d[2:3+1])[0]/1000.0 # volts
-    data['Amps'] = struct.unpack(">h",d[4:5+1])[0]/1000.0 # amps
-    data['Watts'] = struct.unpack(">I",d[6:9+1])[0]/1000.0 # watts
+    data['Volts'] = struct.unpack(">h",d[2:3+1])[0]/1000.0  # volts
+    data['Amps'] = struct.unpack(">h",d[4:5+1])[0]/1000.0   # amps
+    data['Watts'] = struct.unpack(">I",d[6:9+1])[0]/1000.0  # watts
     data['temp_C'] = struct.unpack(">h",d[10:11+1])[0]      # temp in C
     data['temp_F'] = struct.unpack(">h",d[12:13+1])[0]      # temp in F
 
     g = 0
     for i in range(16,95,8):
-        ma, mw = struct.unpack(">II",d[i:i+8]) # mAh,mWh respectively
+        ma, mw = struct.unpack(">II",d[i:i+8])              # mAh,mWh respectively
         gs = str(g)
         data[gs+'_mAh'] = ma
         data[gs+'_mWh'] = mw
@@ -64,7 +64,7 @@ while True:
 
     data['data_line_pos_volt'] = struct.unpack(">h",d[96:97+1])[0]/100.0 # data line pos voltage
     data['data_line_neg_volt'] = struct.unpack(">h",d[98:99+1])[0]/100.0 # data line neg voltage
-    data['resistance'] = struct.unpack(">I",d[122:125+1])[0]/10.0 # resistance
+    data['resistance'] = struct.unpack(">I",d[122:125+1])[0]/10.0        # resistance
     
     print(data)
 
