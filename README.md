@@ -4,9 +4,11 @@ Based on the excellent reverse engineering found here - https://sigrok.org/wiki/
 
 This little Python script extracts data from the UM25C etc. USB Power meters.
 
-# Todo 
+To view a live graph voltage/current/wattage:
 
-Live graphing of data
+```
+./usbmeter.py --graph
+```
 
 # Licence
 
