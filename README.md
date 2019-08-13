@@ -10,6 +10,14 @@ To view a live graph of voltage/current/wattage:
 ./usbmeter.py --graph
 ```
 
+# Install on arch
+
+```
+sudo pacman -S bluez
+sudo pacman -S bluez-utils 
+sudo pacman -S python-pybluez
+```
+
 # Todo
 
 * Store data to a user specified file

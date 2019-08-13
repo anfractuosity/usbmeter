@@ -11,6 +11,7 @@ import datetime
 from matplotlib.dates import DayLocator, HourLocator, DateFormatter, drange
 import matplotlib
 import time
+import pickle
 
 parser = argparse.ArgumentParser(description="CLI for USB Meter")
 parser.add_argument("--addr", dest="addr",type=str,help="Address of USB Meter")
@@ -58,6 +59,8 @@ if args.graph is not None:
 
 sock.send((0xF0).to_bytes(1,byteorder='big'))
 
+pickle_file = open('data.pickle', 'wb')
+
 d = b""
 while True:
 
@@ -69,7 +72,7 @@ while True:
     data = {}
 
     data['Volts'] = struct.unpack(">h",d[2:3+1])[0]/1000.0  # volts
-    data['Amps'] = struct.unpack(">h",d[4:5+1])[0]/1000.0   # amps
+    data['Amps'] = struct.unpack(">h",d[4:5+1])[0]/10000.0  # amps
     data['Watts'] = struct.unpack(">I",d[6:9+1])[0]/1000.0  # watts
     data['temp_C'] = struct.unpack(">h",d[10:11+1])[0]      # temp in C
     data['temp_F'] = struct.unpack(">h",d[12:13+1])[0]      # temp in F
@@ -81,6 +84,7 @@ while True:
     utc_dt = datetime.datetime.now(datetime.timezone.utc) # UTC time
     dt = utc_dt.astimezone() # local time
     times.append(dt)
+    data['time'] = dt
 
     g = 0
     for i in range(16,95,8):
@@ -115,6 +119,7 @@ while True:
         plt.pause(0.001)
 
     print(data)
+    pickle.dump(data,pickle_file)
 
     d=b""
     sock.send((0xF0).to_bytes(1,byteorder='big'))
