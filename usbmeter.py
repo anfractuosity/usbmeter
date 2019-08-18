@@ -20,11 +20,12 @@ parser.add_argument("--graph", dest="graph",help="Live graphing",action='store_t
 args = parser.parse_args()
 
 addr = None
+
 if args.addr:
     addr = args.addr
 else:
     nearby_devices = discover_devices(lookup_names = True)
-    addr = None
+    
     for v in nearby_devices:
         if v[1] == "UM25C":
             print("Found",v[0])
@@ -32,6 +33,10 @@ else:
             break
 
 service_matches = find_service(address=addr)
+
+if len(service_matches) == 0:
+    print("No services found for address ",addr)
+    quit()
 
 first_match = service_matches[0]
 port = first_match["port"]
