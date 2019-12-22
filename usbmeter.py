@@ -23,30 +23,32 @@ addr = None
 
 if args.addr:
     addr = args.addr
+    sock=BluetoothSocket( RFCOMM )
+    res = sock.connect((addr, 1))
 else:
     nearby_devices = discover_devices(lookup_names = True)
     
     for v in nearby_devices:
-        if v[1] == "UM25C":
+        if "UM25C" in v[1]:
             print("Found",v[0])
             addr = v[0]
             break
 
-service_matches = find_service(address=addr)
+    service_matches = find_service(address=addr)
 
-if len(service_matches) == 0:
-    print("No services found for address ",addr)
-    quit()
+    if len(service_matches) == 0:
+        print("No services found for address ",addr)
+        quit()
 
-first_match = service_matches[0]
-port = first_match["port"]
-name = first_match["name"]
-host = first_match["host"]
+    first_match = service_matches[0]
+    port = first_match["port"]
+    name = first_match["name"]
+    host = first_match["host"]
 
-print("connecting to \"%s\" on %s" % (name, host))
+    print("connecting to \"%s\" on %s:%d" % (name, host, port))
 
-sock=BluetoothSocket( RFCOMM )
-res = sock.connect((host, port))
+    sock=BluetoothSocket( RFCOMM )
+    res = sock.connect((host, port))
 
 leng = 20
 
