@@ -33,6 +33,32 @@ You can also run without the --addr parameter, for the device
 to be detected automatically, however some people have told 
 me that this gives 'No services found for address ....' for them.
 
+# Save data
+
+To save the power data to a file:
+
+```
+usbmeter --addr <ADDRESS> --graph --out out.dat
+```
+
+To process this pickled data, you can do:
+
+```
+#!/usr/bin/python3
+import pickle
+objects = []
+
+with open('out.dat', 'rb') as f:
+    while True:
+        try:
+            objects.append(pickle.load(f))
+        except EOFError:
+            break
+
+for x in objects:
+    print("%s,%f,%f" % (x['time'],x['Volts'],x['Amps']))
+```
+
 # Licence
 
 MIT
