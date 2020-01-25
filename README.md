@@ -4,6 +4,8 @@ Extracts and graphs data from UM25C etc. USB power meters in Linux.
 
 Based on the excellent reverse engineering found here - https://sigrok.org/wiki/RDTech_UM24C.  
 
+![graph](/images/graph.png)
+
 # Install on arch
 
 ```
