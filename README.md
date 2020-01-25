@@ -4,12 +4,6 @@ Extracts and graphs data from UM25C etc. USB power meters in Linux.
 
 Based on the excellent reverse engineering found here - https://sigrok.org/wiki/RDTech_UM24C.  
 
-To view a live graph of voltage/current/wattage:
-
-```
-usbmeter --graph
-```
-
 # Install on arch
 
 ```
@@ -28,20 +22,16 @@ sudo systemctl start bluetooth
 echo "power on" | bluetoothctl
 ```
 
-It is then recommended to do:
+It is then recommended to do the following, to view a live
+graph of voltage, current and power:
 
 ```
-usbmeter --addr <ADDRESS>
+usbmeter --addr <ADDRESS> --graph
 ```
 
 You can also run without the --addr parameter, for the device
 to be detected automatically, however some people have told 
 me that this gives 'No services found for address ....' for them.
-
-# Todo
-
-* Store data to a user specified file
-* Tidy code
 
 # Licence
 

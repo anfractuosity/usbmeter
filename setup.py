@@ -10,7 +10,7 @@ setuptools.setup(
     description="Monitor USB power etc.",
     packages=setuptools.find_packages(),
     python_requires='>=3.5',
-    install_requires=['pybluez','matplotlib','numpy'],
+    install_requires=['pybluez','matplotlib'],
     package_dir={'usbmeter': 'usbmeter'},
     scripts=['usbmeter/usbmeter']
 )

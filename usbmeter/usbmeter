@@ -4,22 +4,32 @@
 # echo "power on" | bluetoothctl
 
 import collections
-from bluetooth import *
 import sys
 import argparse
 import datetime
-from matplotlib.dates import DayLocator, HourLocator, DateFormatter, drange
-import matplotlib
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import time
 import pickle
+from matplotlib.dates import DayLocator, HourLocator, DateFormatter, drange
+from bluetooth import *
 
 parser = argparse.ArgumentParser(description="CLI for USB Meter")
 parser.add_argument("--addr", dest="addr",type=str,help="Address of USB Meter")
-parser.add_argument("--graph", dest="graph",help="Live graphing",action='store_true')
+parser.add_argument("--graph",dest="graph",help="Live graphing", nargs="?", default=False)
+parser.add_argument(
+        "--out",
+        dest="out",
+        type=str,
+        help="Filename to output data to",
+        required=False,
+        default=""
+)
 
 args = parser.parse_args()
 
 addr = None
+graph = not (args.graph == False)
 
 if args.addr:
     addr = args.addr
@@ -57,16 +67,16 @@ currents = collections.deque(maxlen=leng)
 watts = collections.deque(maxlen=leng)
 times = collections.deque(maxlen=leng)
 
-if args.graph is not None:
-    import numpy as np
-    import matplotlib.pyplot as plt
-    import matplotlib.animation as animation
+if graph:
     f, (ax1, ax2, ax3) = plt.subplots(3,sharex=True)
     plt.show(block=False)
 
 sock.send((0xF0).to_bytes(1,byteorder='big'))
 
-pickle_file = open('data.pickle', 'wb')
+if args.out != "":
+    pickle_file = open(args.out, 'ab')
+else:
+    pickle_file = None
 
 d = b""
 while True:
@@ -105,7 +115,7 @@ while True:
     data['data_line_neg_volt'] = struct.unpack(">h",d[98:99+1])[0]/100.0 # data line neg voltage
     data['resistance'] = struct.unpack(">I",d[122:125+1])[0]/10.0        # resistance
     
-    if args.graph is not None and plt.get_fignums():
+    if graph and plt.get_fignums():
         ax1.clear()
         ax1.plot(times, volts)
         ax2.clear()
@@ -125,8 +135,10 @@ while True:
         f.canvas.flush_events()
         plt.pause(0.001)
 
-    print(data)
-    pickle.dump(data,pickle_file)
+    print(("%s: %fV %fA %fW")%(data['time'],data['Volts'],data['Amps'],data['Watts']))
+
+    if pickle_file != None:
+        pickle.dump(data,pickle_file)
 
     d=b""
     sock.send((0xF0).to_bytes(1,byteorder='big'))
