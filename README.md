@@ -7,7 +7,7 @@ Based on the excellent reverse engineering found here - https://sigrok.org/wiki/
 To view a live graph of voltage/current/wattage:
 
 ```
-./usbmeter.py --graph
+usbmeter --graph
 ```
 
 # Install on arch
@@ -16,6 +16,7 @@ To view a live graph of voltage/current/wattage:
 sudo pacman -S bluez
 sudo pacman -S bluez-utils 
 sudo pacman -S python-pybluez
+pip3 install . --user
 ```
 
 # Run on arch
@@ -30,7 +31,7 @@ echo "power on" | bluetoothctl
 It is then recommended to do:
 
 ```
-./usbmeter.py --addr <ADDRESS>
+usbmeter --addr <ADDRESS>
 ```
 
 You can also run without the --addr parameter, for the device
