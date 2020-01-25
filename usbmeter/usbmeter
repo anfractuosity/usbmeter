@@ -7,145 +7,153 @@ import collections
 import sys
 import argparse
 import datetime
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
 import time
 import pickle
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 from matplotlib.dates import DayLocator, HourLocator, DateFormatter, drange
 from bluetooth import *
 
-parser = argparse.ArgumentParser(description="CLI for USB Meter")
-parser.add_argument("--addr", dest="addr",type=str,help="Address of USB Meter")
-parser.add_argument("--graph",dest="graph",help="Live graphing", nargs="?", default=False)
-parser.add_argument(
+
+# Process socket data from USB meter and extract volts, amps etc.
+def processdata(d):
+
+    data = {}
+
+    data["Volts"] = struct.unpack(">h", d[2 : 3 + 1])[0] / 1000.0  # volts
+    data["Amps"] = struct.unpack(">h", d[4 : 5 + 1])[0] / 10000.0  # amps
+    data["Watts"] = struct.unpack(">I", d[6 : 9 + 1])[0] / 1000.0  # watts
+    data["temp_C"] = struct.unpack(">h", d[10 : 11 + 1])[0]  # temp in C
+    data["temp_F"] = struct.unpack(">h", d[12 : 13 + 1])[0]  # temp in F
+
+    utc_dt = datetime.datetime.now(datetime.timezone.utc)  # UTC time
+    dt = utc_dt.astimezone()  # local time
+    data["time"] = dt
+
+    g = 0
+    for i in range(16, 95, 8):
+        ma, mw = struct.unpack(">II", d[i : i + 8])  # mAh,mWh respectively
+        gs = str(g)
+        data[gs + "_mAh"] = ma
+        data[gs + "_mWh"] = mw
+        g += 1
+
+    data["data_line_pos_volt"] = struct.unpack(">h", d[96: 97 + 1])[0] / 100.0
+    data["data_line_neg_volt"] = struct.unpack(">h", d[98: 99 + 1])[0] / 100.0
+    data["resistance"] = struct.unpack(">I", d[122: 125 + 1])[0] / 10.0  # resistance
+    return data
+
+
+if __name__ == "__main__":
+
+    # Parse arguments
+    parser = argparse.ArgumentParser(description="CLI for USB Meter")
+    parser.add_argument("--addr", dest="addr", type=str, help="Address of USB Meter")
+    parser.add_argument("--graph", dest="graph", help="Live graphing", nargs="?", default=False)
+    parser.add_argument(
         "--out",
         dest="out",
         type=str,
         help="Filename to output data to",
         required=False,
-        default=""
-)
+        default="",
+    )
 
-args = parser.parse_args()
+    args = parser.parse_args()
+    addr = None
+    graph = not (args.graph == False)
 
-addr = None
-graph = not (args.graph == False)
+    if args.addr:
+        addr = args.addr
+        sock = BluetoothSocket(RFCOMM)
+        res = sock.connect((addr, 1))
+    else:
 
-if args.addr:
-    addr = args.addr
-    sock=BluetoothSocket( RFCOMM )
-    res = sock.connect((addr, 1))
-else:
-    nearby_devices = discover_devices(lookup_names = True)
-    
-    for v in nearby_devices:
-        if "UM25C" in v[1]:
-            print("Found",v[0])
-            addr = v[0]
-            break
+        # Automagically find USB meter
+        nearby_devices = discover_devices(lookup_names=True)
 
-    service_matches = find_service(address=addr)
+        for v in nearby_devices:
+            if "UM25C" in v[1]:
+                print("Found", v[0])
+                addr = v[0]
+                break
 
-    if len(service_matches) == 0:
-        print("No services found for address ",addr)
-        quit()
+        service_matches = find_service(address=addr)
 
-    first_match = service_matches[0]
-    port = first_match["port"]
-    name = first_match["name"]
-    host = first_match["host"]
+        if len(service_matches) == 0:
+            print("No services found for address ", addr)
+            quit()
 
-    print("connecting to \"%s\" on %s:%d" % (name, host, port))
+        first_match = service_matches[0]
+        port = first_match["port"]
+        name = first_match["name"]
+        host = first_match["host"]
 
-    sock=BluetoothSocket( RFCOMM )
-    res = sock.connect((host, port))
+        print('connecting to "%s" on %s:%d' % (name, host, port))
 
-leng = 20
+        sock = BluetoothSocket(RFCOMM)
+        res = sock.connect((host, port))
 
-volts = collections.deque(maxlen=leng)
-currents = collections.deque(maxlen=leng)
-watts = collections.deque(maxlen=leng)
-times = collections.deque(maxlen=leng)
+    # Initialise variables for graph
+    leng = 20
+    volts = collections.deque(maxlen=leng)
+    currents = collections.deque(maxlen=leng)
+    watts = collections.deque(maxlen=leng)
+    times = collections.deque(maxlen=leng)
 
-if graph:
-    f, (ax1, ax2, ax3) = plt.subplots(3,sharex=True)
-    plt.show(block=False)
+    if graph:
+        f, (ax1, ax2, ax3) = plt.subplots(3, sharex=True)
+        plt.show(block=False)
 
-sock.send((0xF0).to_bytes(1,byteorder='big'))
+    if args.out != "":
+        pickle_file = open(args.out, "ab")
+    else:
+        pickle_file = None
 
-if args.out != "":
-    pickle_file = open(args.out, 'ab')
-else:
-    pickle_file = None
+    d = b""
+    while True:
 
-d = b""
-while True:
+        # Send request to USB meter
+        sock.send((0xF0).to_bytes(1, byteorder="big"))
 
-    d += sock.recv(130)
+        d += sock.recv(130)
 
-    if len(d) != 130:
-        continue
+        if len(d) != 130:
+            continue
 
-    data = {}
+        data = processdata(d)
+        volts.append(data["Volts"])
+        currents.append(data["Amps"])
+        watts.append(data["Watts"])
+        times.append(data["time"])
 
-    data['Volts'] = struct.unpack(">h",d[2:3+1])[0]/1000.0  # volts
-    data['Amps'] = struct.unpack(">h",d[4:5+1])[0]/10000.0  # amps
-    data['Watts'] = struct.unpack(">I",d[6:9+1])[0]/1000.0  # watts
-    data['temp_C'] = struct.unpack(">h",d[10:11+1])[0]      # temp in C
-    data['temp_F'] = struct.unpack(">h",d[12:13+1])[0]      # temp in F
+        if graph and plt.get_fignums():
 
-    volts.append(data['Volts'])
-    currents.append(data['Amps'])
-    watts.append(data['Watts'])
+            ax1.clear()
+            ax1.plot(times, volts)
+            ax2.clear()
+            ax2.plot(times, currents)
+            ax3.clear()
+            ax3.plot(times, watts)
 
-    utc_dt = datetime.datetime.now(datetime.timezone.utc) # UTC time
-    dt = utc_dt.astimezone() # local time
-    times.append(dt)
-    data['time'] = dt
+            ax1.title.set_text("Voltage")
+            ax1.xaxis.set_major_formatter(DateFormatter("%H:%M:%S"))
+            ax1.fmt_xdata = DateFormatter("%H:%M:%S")
+            f.autofmt_xdate()
 
-    g = 0
-    for i in range(16,95,8):
-        ma, mw = struct.unpack(">II",d[i:i+8])              # mAh,mWh respectively
-        gs = str(g)
-        data[gs+'_mAh'] = ma
-        data[gs+'_mWh'] = mw
-        g+=1
+            ax2.title.set_text("Current")
+            ax3.title.set_text("Wattage")
 
-    data['data_line_pos_volt'] = struct.unpack(">h",d[96:97+1])[0]/100.0 # data line pos voltage
-    data['data_line_neg_volt'] = struct.unpack(">h",d[98:99+1])[0]/100.0 # data line neg voltage
-    data['resistance'] = struct.unpack(">I",d[122:125+1])[0]/10.0        # resistance
-    
-    if graph and plt.get_fignums():
-        ax1.clear()
-        ax1.plot(times, volts)
-        ax2.clear()
-        ax2.plot(times, currents)
-        ax3.clear()
-        ax3.plot(times, watts)
+            f.canvas.draw()
+            f.canvas.flush_events()
+            plt.pause(0.001)
 
-        ax1.title.set_text("Voltage")
-        ax1.xaxis.set_major_formatter(DateFormatter('%H:%M:%S'))
-        ax1.fmt_xdata = DateFormatter('%H:%M:%S')
-        f.autofmt_xdate()
+        print("%s: %fV %fA %fW" % (data["time"], data["Volts"], data["Amps"], data["Watts"]))
 
-        ax2.title.set_text("Current")
-        ax3.title.set_text("Wattage")
+        if pickle_file is not None:
+            pickle.dump(data, pickle_file)
 
-        f.canvas.draw()
-        f.canvas.flush_events()
-        plt.pause(0.001)
+        d = b""
+        time.sleep(0.01)
 
-    print(("%s: %fV %fA %fW")%(data['time'],data['Volts'],data['Amps'],data['Watts']))
-
-    if pickle_file != None:
-        pickle.dump(data,pickle_file)
-
-    d=b""
-    sock.send((0xF0).to_bytes(1,byteorder='big'))
-
-
-    time.sleep(0.01)
-    
-sock.close()
-
-
+    sock.close()
