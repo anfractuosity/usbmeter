@@ -77,19 +77,19 @@ if __name__ == "__main__":
                 print("Found", v[0])
                 addr = v[0]
                 break
-
+        
         service_matches = find_service(address=addr)
-
+        # si no services_match, we set the values like when the addr value is from the argument
         if len(service_matches) == 0:
-            print("No services found for address ", addr)
-            quit()
+            host = addr
+            port = 1
+        else:
+            first_match = service_matches[0]
+            port = first_match["port"]
+            name = first_match["name"]
+            host = first_match["host"]
 
-        first_match = service_matches[0]
-        port = first_match["port"]
-        name = first_match["name"]
-        host = first_match["host"]
-
-        print('connecting to "%s" on %s:%d' % (name, host, port))
+            print('connecting to "%s" on %s:%d' % (name, host, port))
 
         sock = BluetoothSocket(RFCOMM)
         res = sock.connect((host, port))
