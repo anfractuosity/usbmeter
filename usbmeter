@@ -78,10 +78,14 @@ if __name__ == "__main__":
                 addr = v[0]
                 break
 
+        if addr is None:
+            print("No address provided", file=sys.stderr)
+            quit()
+
         service_matches = find_service(address=addr)
 
         if len(service_matches) == 0:
-            print("No services found for address ", addr)
+            print("No services found for address ", addr, file=sys.stderr)
             quit()
 
         first_match = service_matches[0]
@@ -89,9 +93,12 @@ if __name__ == "__main__":
         name = first_match["name"]
         host = first_match["host"]
 
-        print('connecting to "%s" on %s:%d' % (name, host, port))
+        if host is None or port is None:
+            print("Host or port not specified", file=sys.stderr)
+            quit()
 
         sock = BluetoothSocket(RFCOMM)
+        print('connecting to "{}" on {}:{}'.format(name, host, port))
         res = sock.connect((host, port))
 
     # Initialise variables for graph
